@@ -1,0 +1,58 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>V-Cybertron Orchestrator</title>
+<style>
+ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f7fb;margin:0}
+ .wrap{max-width:1100px;margin:2rem auto;padding:0 1rem}
+ .grid{display:grid;grid-template-columns:1fr;gap:1rem}
+ @media(min-width:1000px){.grid{grid-template-columns:1fr 1fr}}
+ .card{background:#fff;border-radius:10px;box-shadow:0 6px 16px rgba(0,0,0,.06);padding:1rem 1.2rem}
+ input{width:100%;padding:.6rem .7rem;border:1px solid #dadce0;border-radius:8px}
+ button{padding:.6rem 1rem;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}
+ pre{background:#0b1020;color:#f1f5f9;padding:.75rem;border-radius:8px;overflow:auto;max-height:420px}
+ .row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>V-Cybertron Orchestrator</h1>
+  <div class="grid">
+    <div class="card">
+      <h2>Code Agent</h2>
+      <div class="row"><input id="code_repo" placeholder="https://github.com/owner/repo.git"><input id="code_ref" placeholder="main (optional)"><button id="code_run">Scan</button></div>
+      <pre id="code_out"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Container Agent</h2>
+      <div class="row"><input id="cont_repo" placeholder="https://github.com/owner/repo"><input id="cont_ref" placeholder="main (optional)"><button id="cont_run">Scan</button></div>
+      <pre id="cont_out"></pre>
+    </div>
+
+    <div class="card">
+      <h2>K8s Agent</h2>
+      <div class="row"><input id="k8s_repo" placeholder="https://github.com/owner/repo"><input id="k8s_ref" placeholder="main (optional)"><button id="k8s_run">Scan</button></div>
+      <pre id="k8s_out"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Syslog Agent</h2>
+      <div class="row"><input id="log_msg" placeholder='{"message":"failed password for user bob","source":"ssh"}'><button id="log_send">Ingest</button><button id="log_fetch">Get Findings</button></div>
+      <pre id="log_out"></pre>
+    </div>
+  </div>
+</div>
+<script>
+function esc(s){return (s||'').toString().replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+async function postJson(url, body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const t=await r.text();if(!r.ok) throw new Error(t||`HTTP ${r.status}`);return t}
+
+const $=id=>document.getElementById(id);
+$('code_run').onclick=async()=>{try{const t=await postJson('/scan/code',{repo:$('code_repo').value.trim(),ref:$('code_ref').value.trim()});$('code_out').innerHTML=esc(t)}catch(e){$('code_out').textContent=String(e)}}
+$('cont_run').onclick=async()=>{try{const t=await postJson('/scan/container',{repo:$('cont_repo').value.trim(),ref:$('cont_ref').value.trim()});$('cont_out').innerHTML=esc(t)}catch(e){$('cont_out').textContent=String(e)}}
+$('k8s_run').onclick=async()=>{try{const t=await postJson('/scan/k8s',{repo:$('k8s_repo').value.trim(),ref:$('k8s_ref').value.trim()});$('k8s_out').innerHTML=esc(t)}catch(e){$('k8s_out').textContent=String(e)}}
+$('log_send').onclick=async()=>{try{const text=$('log_msg').value.trim();const payload = text.startsWith('[')?JSON.parse(text):JSON.parse(text||'{}');const t=await postJson('/logs/ingest', payload);$('log_out').innerHTML=esc(t)}catch(e){$('log_out').textContent=String(e)}}
+$('log_fetch').onclick=async()=>{try{const r=await fetch('/logs/findings');$('log_out').innerHTML=esc(await r.text())}catch(e){$('log_out').textContent=String(e)}}
+</script>
+</body></html> 

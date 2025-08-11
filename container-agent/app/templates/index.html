@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Container Security Scanner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; font-weight: 300; }
+        .header p { opacity: 0.9; font-size: 1.1rem; }
+        .main-content { padding: 40px; }
+        .scan-form { background: #f8f9fa; padding: 30px; border-radius: 10px; margin-bottom: 30px; border: 2px solid #e9ecef; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; }
+        input[type="text"] { width: 100%; padding: 15px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 16px; transition: border-color 0.3s ease; }
+        input[type="text"]:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; width: 100%; }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .loading { display: none; text-align: center; padding: 30px; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .results { display: none; }
+        .result-card { background: white; border: 2px solid #e9ecef; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+        .result-header { background: #f8f9fa; padding: 20px; border-bottom: 1px solid #e9ecef; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .result-header:hover { background: #e9ecef; }
+        .result-title { font-weight: 600; font-size: 1.2rem; color: #2c3e50; }
+        .result-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .result-body { display: none; padding: 20px; }
+        .result-body.active { display: block; }
+        .finding-item { background: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #667eea; }
+        .severity-high { border-left-color: #dc3545; }
+        .severity-medium { border-left-color: #ffc107; }
+        .severity-low { border-left-color: #28a745; }
+        .finding-title { font-weight: 600; margin-bottom: 5px; color: #2c3e50; }
+        .finding-description { color: #6c757d; font-size: 0.95rem; margin-bottom: 10px; }
+        .finding-meta { display: flex; gap: 15px; font-size: 0.9rem; color: #6c757d; }
+        .error-message { background: #f8d7da; color: #721c24; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #f5c6cb; }
+        .scan-info { background: #d1ecf1; color: #0c5460; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bee5eb; }
+        .expand-icon { transition: transform 0.3s ease; }
+        .expand-icon.rotated { transform: rotate(180deg); }
+        @media (max-width: 768px) { .container { margin: 10px; border-radius: 10px; } .main-content { padding: 20px; } .header { padding: 20px; } .header h1 { font-size: 2rem; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Container Security Scanner</h1>
+            <p>Scan GitHub repositories for filesystem vulns and image best-practices</p>
+        </div>
+
+        <div class="main-content">
+            <div class="scan-form">
+                <form id="scanForm">
+                    <div class="form-group">
+                        <label for="repoUrl">GitHub Repository URL</label>
+                        <input type="text" id="repoUrl" placeholder="https://github.com/owner/repository" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="refBranch">Branch/Reference (optional)</label>
+                        <input type="text" id="refBranch" placeholder="main, HEAD, or specific commit">
+                    </div>
+                    <button type="submit" class="btn" id="scanBtn">🔍 Start Security Scan</button>
+                </form>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <h3>Scanning repository...</h3>
+                <p>This may take a few minutes depending on the repository size</p>
+            </div>
+
+            <div class="results" id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        class SecurityScanner {
+            constructor() {
+                this.form = document.getElementById('scanForm');
+                this.loading = document.getElementById('loading');
+                this.results = document.getElementById('results');
+                this.scanBtn = document.getElementById('scanBtn');
+                this.init();
+            }
+            init() { this.form.addEventListener('submit', (e) => this.handleSubmit(e)); }
+            async handleSubmit(e) {
+                e.preventDefault();
+                const repoUrl = document.getElementById('repoUrl').value.trim();
+                const refBranch = document.getElementById('refBranch').value.trim() || 'HEAD';
+                if (!/^https?:\/\/github\.com\/[^\/]+\/[^\/]+\/?$/.test(repoUrl)) { this.showError('Please enter a valid GitHub repository URL'); return; }
+                this.showLoading();
+                try {
+                    const response = await fetch('/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repo: repoUrl, ref: refBranch }) });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const data = await response.json();
+                    this.displayResults(data);
+                } catch (error) { this.showError(`Scan failed: ${error.message}`); } finally { this.hideLoading(); }
+            }
+            showLoading() { this.loading.style.display = 'block'; this.results.style.display = 'none'; this.scanBtn.disabled = true; this.scanBtn.textContent = '⏳ Scanning...'; }
+            hideLoading() { this.loading.style.display = 'none'; this.scanBtn.disabled = false; this.scanBtn.textContent = '🔍 Start Security Scan'; }
+            displayResults(data) {
+                this.results.innerHTML = '';
+                const scanInfo = document.createElement('div');
+                scanInfo.className = 'scan-info';
+                scanInfo.innerHTML = `<h3>📊 Scan Results</h3><p><strong>Repository:</strong> ${data.repo}</p><p><strong>Reference:</strong> ${data.ref}</p><p><strong>Scan ID:</strong> ${data.scan_id}</p>`;
+                this.results.appendChild(scanInfo);
+                const trivy = data.findings?.trivy || {};
+                this.addCard('Filesystem (Trivy fs)', trivy.filesystem);
+                this.addCard('Images (Trivy)', trivy.trivy_images);
+                this.addCard('Images (Grype)', trivy.grype_images);
+                this.addCard('Images (Dockle)', trivy.dockle_images);
+                if (data.llm_analysis) this.addCard('LLM Analysis', data.llm_analysis);
+                this.results.style.display = 'block';
+            }
+            addCard(title, obj) {
+                const card = document.createElement('div'); card.className = 'result-card';
+                const bodyHtml = obj ? `<pre>${this.escapeHtml(JSON.stringify(obj, null, 2))}</pre>` : '<div class="error-message">No data</div>';
+                card.innerHTML = `<div class="result-header" onclick="this.parentElement.querySelector('.result-body').classList.toggle('active'); this.querySelector('.expand-icon').classList.toggle('rotated')"><div class="result-title">${title}</div><div><span class="expand-icon">▼</span></div></div><div class="result-body">${bodyHtml}</div>`;
+                this.results.appendChild(card);
+            }
+            showError(message) { this.results.innerHTML = `<div class="error-message"><h3>❌ Error</h3><p>${message}</p></div>`; this.results.style.display = 'block'; }
+            escapeHtml(str) { return str.replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])) }
+        }
+        document.addEventListener('DOMContentLoaded', () => { new SecurityScanner(); });
+    </script>
+</body>
+</html>

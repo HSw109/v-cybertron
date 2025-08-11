@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  code-agent:
+    build: ./code-agent
+    ports:
+      - 5000:5000
+    networks:
+      - llm-network
+    environment:
+      - LLM_URL=http://llm:5010
+
+  container-agent:
+    build: ./container-agent
+    ports:
+      - 5001:5001
+    networks:
+      - llm-network
+    environment:
+      - LLM_URL=http://llm:5010
+
+  k8s-agent:
+    build: ./k8s-agent
+    ports:
+      - 5002:5002
+    networks:
+      - llm-network
+    environment:
+      - LLM_URL=http://llm:5010
+
+  syslog-agent:
+    build: ./syslog-agent
+    ports:
+      - 5003:5003
+    networks:
+      - llm-network
+
+  llm:
+    build: ./llm
+    networks:
+      - llm-network
+    environment:
+      - LLM_BASE_URL
+      - LLM_API_KEY
+      - LLM_MODEL
+
+  webserver:
+    build: ./webserver
+    ports:
+      - 5080:5080
+    networks:
+      - llm-network
+    environment:
+      - CODE_AGENT_URL=http://code-agent:5000
+      - CONTAINER_AGENT_URL=http://container-agent:5001
+      - K8S_AGENT_URL=http://k8s-agent:5002
+      - SYSLOG_AGENT_URL=http://syslog-agent:5003
+
+networks:
+  llm-network:
+    driver: bridge

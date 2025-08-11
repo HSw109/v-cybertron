@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Syslog Agent</title>
+<style>
+ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f7fb;margin:0}
+ .wrap{max-width:960px;margin:2rem auto;padding:0 1rem}
+ .card{background:#fff;border-radius:10px;box-shadow:0 6px 16px rgba(0,0,0,.06);padding:1rem 1.2rem;margin-bottom:1rem}
+ textarea{width:100%;height:120px}
+ button{padding:.6rem 1rem;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}
+ pre{background:#0b1020;color:#f1f5f9;padding:.75rem;border-radius:8px;overflow:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2>Ingest sample logs</h2>
+    <textarea id="logs" placeholder='{"message":"failed password for user bob from 1.2.3.4","source":"ssh"}'></textarea>
+    <div style="margin-top:.5rem"><button id="send">Send</button></div>
+  </div>
+  <div class="card">
+    <h2>Findings</h2>
+    <div style="margin:.5rem 0"><button id="refresh">Refresh</button></div>
+    <pre id="out"></pre>
+  </div>
+</div>
+<script>
+const sendBtn=document.getElementById('send');
+const refreshBtn=document.getElementById('refresh');
+const out=document.getElementById('out');
+sendBtn.onclick=async()=>{
+  try{
+    const text=document.getElementById('logs').value.trim();
+    const payload = text.startsWith('[') ? JSON.parse(text) : JSON.parse(text||'{}');
+    const r=await fetch('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    out.textContent=await r.text();
+  }catch(e){ out.textContent=String(e); }
+};
+refreshBtn.onclick=async()=>{
+  const r=await fetch('/findings'); out.textContent=await r.text();
+};
+</script>
+</body></html> 

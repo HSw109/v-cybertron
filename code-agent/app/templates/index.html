@@ -1,0 +1,84 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Code Repo Scanner</title>
+<style>
+ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f6f7fb;margin:0}
+ .wrap{max-width:960px;margin:2rem auto;padding:0 1rem}
+ .card{background:#fff;border-radius:10px;box-shadow:0 6px 16px rgba(0,0,0,.06);padding:1rem 1.2rem;margin-bottom:1rem}
+ .row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+ input{width:100%;max-width:520px;padding:.6rem .7rem;border:1px solid #dadce0;border-radius:8px}
+ button{padding:.6rem 1rem;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}
+ button[disabled]{background:#9aa0a6}
+ pre{background:#0b1020;color:#f1f5f9;padding:.75rem;border-radius:8px;overflow:auto}
+ .badge{display:inline-block;padding:.2rem .6rem;border-radius:12px;background:#eef2ff;color:#1e40af;font-size:.75rem;margin-right:.4rem}
+ .error{color:#b00020}
+ .grid{display:grid;grid-template-columns:1fr;gap:1rem}
+ @media(min-width:900px){.grid{grid-template-columns:1fr 1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2>Run scan</h2>
+    <form id="scan-form" class="row">
+      <input id="repo" type="text" placeholder="https://github.com/owner/repo.git" required>
+      <input id="ref"  type="text" placeholder="main (optional)">
+      <button id="run">Scan</button>
+      <span id="status"></span>
+    </form>
+  </div>
+
+  <div id="summary" class="card" style="display:none;"></div>
+  <div id="results" class="grid"></div>
+</div>
+
+<script>
+const form=document.getElementById("scan-form");
+const runBtn=document.getElementById("run");
+const statusEl=document.getElementById("status");
+const summary=document.getElementById("summary");
+const results=document.getElementById("results");
+
+form.addEventListener("submit", async(e)=>{
+  e.preventDefault(); runBtn.disabled=true; statusEl.textContent="Scanning…";
+  results.innerHTML=""; summary.style.display="none"; summary.innerHTML="";
+  const repo=document.getElementById("repo").value.trim();
+  const ref=document.getElementById("ref").value.trim();
+
+  try{
+    const resp=await fetch("/scan",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(ref?{repo,ref}:{repo})});
+    const text=await resp.text();
+    if(!resp.ok) throw new Error(text||`HTTP ${resp.status}`);
+    const data=JSON.parse(text);
+
+    statusEl.textContent="Done"; summary.style.display="block";
+    const codes=Object.entries(data.tool_exit_codes)
+      .map(([k,v])=>`<span class="badge">${k}: ${v}</span>`).join(" ");
+    summary.innerHTML=`<h3>Summary</h3>
+      <div><b>Repo:</b> ${escapeHtml(data.repo)}</div>
+      <div><b>Ref:</b> ${escapeHtml(data.ref)}</div>
+      <div><b>Scan ID:</b> ${escapeHtml(data.scan_id)}</div>
+      <div><b>Exit codes:</b> ${codes}</div>`;
+
+    const tools=["gitleaks","semgrep","bandit"];
+    results.innerHTML="";
+    for(const t of tools){
+      const card=document.createElement("div"); card.className="card";
+      const f=data.findings[t];
+      if(!f) card.innerHTML=`<h3>${t}</h3><div class="error">No output.</div>`;
+      else if(f.error) card.innerHTML=`<h3>${t}</h3><div class="error">${escapeHtml(f.error)}</div>`;
+      else card.innerHTML=`<h3>${t}</h3><pre>${escapeHtml(JSON.stringify(f,null,2))}</pre>`;
+      results.appendChild(card);
+    }
+  }catch(err){
+    summary.style.display="block";
+    summary.innerHTML = `<div class="error"><b>Error:</b> ${escapeHtml(String(err))}</div>`;
+    statusEl.textContent="";
+  }finally{ runBtn.disabled=false; }
+});
+function escapeHtml(str){return str.replace(/[&<>"']/g,(m)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+</script>
+</body></html>
