@@ -11,6 +11,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY server.py /app/server.py
+COPY templates /app/templates
 
 EXPOSE 5010
 CMD ["python", "server.py"] 

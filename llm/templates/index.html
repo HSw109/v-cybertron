@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Call /analyze</title>
+<pre id="out">Calling /analyze…</pre>
+<script>
+function callAnalyze() {
+    fetch('/analyze', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ findings: {} })
+    })
+    .then(r => r.json())
+    .then(d => { out.textContent = JSON.stringify(d, null, 2); })
+    .catch(e => { out.textContent = String(e); });
+    }
+</script>
+<textarea id="findings" placeholder="Enter findings here"></textarea>
+<button onclick="callAnalyze()">Call /analyze</button>

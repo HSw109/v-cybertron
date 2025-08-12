@@ -15,7 +15,7 @@ RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh |
  && grype version
 
 # Dockle
-RUN curl -sSfL https://github.com/goodwithtech/dockle/releases/latest/download/dockle_Linux-64bit.tar.gz -L -o /tmp/dockle.tgz \
+RUN curl -sSfL https://github.com/goodwithtech/dockle/releases/download/v0.4.15/dockle_0.4.15_Linux-386.tar.gz -L -o /tmp/dockle.tgz \
  && tar -xzf /tmp/dockle.tgz -C /usr/local/bin dockle \
  && rm -f /tmp/dockle.tgz \
  && dockle --version

@@ -37,6 +37,8 @@ services:
 
   llm:
     build: ./llm
+    ports:
+      - 5010:5010
     networks:
       - llm-network
     environment:
