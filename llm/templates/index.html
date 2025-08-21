@@ -1,18 +1,274 @@
 <!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<title>Call /analyze</title>
-<pre id="out">Calling /analyze…</pre>
+<title>Analyze UI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Lightweight styling -->
+<style>
+  :root { --bg:#0f172a; --fg:#e2e8f0; --muted:#94a3b8; --card:#111827; --accent:#6366f1; }
+  body { margin:20px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg); color: var(--fg); }
+  h2 { margin: 0 0 12px; }
+  textarea { width:100%; height:180px; padding:12px; box-sizing:border-box; border-radius:10px; background:#0b1220; color:#e6eef8; border:1px solid #1f2937; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:10px 0; }
+  button { background: var(--accent); color:white; border:0; padding:8px 12px; border-radius:10px; cursor:pointer; }
+  button.secondary { background:#1f2937; color:#e5e7eb; }
+  button.ghost { background:transparent; border:1px solid #334155; }
+  .meta { color: var(--muted); font-size:13px; }
+  .grid { display:grid; grid-template-columns:1fr 360px; gap:16px; align-items:start; }
+  @media (max-width: 1000px){ .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border:1px solid #1f2937; border-radius:12px; padding:12px; }
+  .label { font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .markdown { line-height:1.55; }
+  .markdown h1,.markdown h2,.markdown h3{ margin:14px 0 8px; }
+  .markdown table { width:100%; border-collapse: collapse; margin:8px 0; }
+  .markdown th,.markdown td { border:1px solid #334155; padding:6px 8px; }
+  .markdown code { background:#0b1220; padding:2px 6px; border-radius:6px; }
+  .markdown pre { background:#0b1220; padding:12px; border-radius:10px; overflow:auto; }
+  .out { min-height:160px; }
+  .small { font-size:12px; color:var(--muted); }
+  .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:#1e293b; color:#c7d2fe; font-weight:600; font-size:12px; }
+  .toggle { display:flex; align-items:center; gap:8px; }
+  .toggle input { transform: scale(1.2); }
+</style>
+
+<!-- Markdown + sanitizer (tiny, from CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script>
-function callAnalyze() {
-    fetch('/analyze', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ findings: {} })
-    })
-    .then(r => r.json())
-    .then(d => { out.textContent = JSON.stringify(d, null, 2); })
-    .catch(e => { out.textContent = String(e); });
-    }
+  marked.setOptions({ smartypants: false });
 </script>
-<textarea id="findings" placeholder="Enter findings here"></textarea>
-<button onclick="callAnalyze()">Call /analyze</button>
+<!-- <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script> -->
+</head>
+<body>
+
+<h2>Call <code>/analyze</code></h2>
+<div class="label">Paste findings JSON</div>
+<textarea id="findings" placeholder='{"meta": {"scanner": "quick-scan"}, "code_scan": {...}}'></textarea>
+
+<div class="row">
+  <button id="callBtn">Call /analyze</button>
+  <button id="abortBtn" class="secondary" disabled>Abort</button>
+  <button id="sampleBtn" class="ghost">Load sample</button>
+  <button id="clearBtn" class="ghost">Clear</button>
+  <span class="toggle"><input type="checkbox" id="streamToggle"><label for="streamToggle" class="meta">Stream response</label></span>
+  <span class="meta">Status: <span id="status">idle</span></span>
+  <span class="meta">Elapsed: <span id="elapsed">0.0s</span></span>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <span class="badge">Response</span>
+      <div>
+        <button id="copyBtn" class="ghost">Copy</button>
+        <button id="rawBtn" class="ghost">Raw JSON</button>
+      </div>
+    </div>
+    <div id="out" class="markdown out"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">Parsed fields</div>
+    <div id="parsed"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const findingsEl = document.getElementById('findings');
+  const callBtn = document.getElementById('callBtn');
+  const abortBtn = document.getElementById('abortBtn');
+  const sampleBtn = document.getElementById('sampleBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const statusEl = document.getElementById('status');
+  const elapsedEl = document.getElementById('elapsed');
+  const outEl = document.getElementById('out');
+  const parsedEl = document.getElementById('parsed');
+  const copyBtn = document.getElementById('copyBtn');
+  const rawBtn = document.getElementById('rawBtn');
+  const streamToggle = document.getElementById('streamToggle');
+
+  let controller = null;
+  let startTs = 0;
+  let lastJson = null;      // last full JSON result
+  let lastMarkdown = "";    // accumulated md for streaming
+  let rawMode = false;
+
+  function setStatus(s){ statusEl.textContent = s; }
+  function tickElapsed(){
+    if (!startTs) { elapsedEl.textContent = '0.0s'; return; }
+    elapsedEl.textContent = ((performance.now() - startTs)/1000).toFixed(1)+'s';
+    if (controller) requestAnimationFrame(tickElapsed);
+  }
+  function normalizeAscii(s){
+  return (s || "")
+    .replace(/[\u2010-\u2015]/g, "-")        // all dash variants -> "-"
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u00a0\u202f\u2007]/g, " ");  // NBSP, NARROW NBSP, FIGURE SPACE
+  }
+  function sanitizeAndRender(md){
+    const html = marked.parse(normalizeAscii(md || ""));
+    outEl.innerHTML = html;
+  }
+  function renderParsed(obj){
+    if (!obj) { parsedEl.innerHTML = '<span class="small">—</span>'; return; }
+    const keys = Object.keys(obj);
+    const llm = obj.llm_summary;
+    const fb  = obj.fallback;
+    const err = obj.error;
+    const rows = [];
+    if (llm) rows.push(`<tr><td>llm_summary</td><td>${(llm+'').slice(0,160)}${llm.length>160?'…':''}</td></tr>`);
+    if (fb) rows.push(`<tr><td>fallback.risk_score</td><td>${fb.risk_score ?? '—'}</td></tr>`);
+    if (err) rows.push(`<tr><td>error</td><td>${String(err)}</td></tr>`);
+    if (!rows.length) rows.push(`<tr><td>keys</td><td>${keys.join(', ')}</td></tr>`);
+    parsedEl.innerHTML = `<table><tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  sampleBtn.addEventListener('click', () => {
+    findingsEl.value = JSON.stringify({
+      meta: { scanner: "quick-scan", generated_at: new Date().toISOString(), environment: "staging" },
+      code_scan: { issues: [{ file:"app/main.py", line:42, type:"hardcoded_secret", severity:"high", evidence:'API_KEY="AKIAFAKEEXAMPLE"' }] },
+      containers: { images:[{ image:"nginx:1.18.0", vulnerabilities:[{ cve:"CVE-2020-12345", severity:"medium" }]}] },
+      k8s: { insecure_configs:[{ object:"deployment/web", issue:"runAsNonRoot=false", severity:"high" }] },
+      logs: { events:[{ ts:new Date().toISOString(), type:"failed_login", details:"5 failed logins from 203.0.113.45" }]}
+    }, null, 2);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    outEl.innerHTML = '';
+    parsedEl.innerHTML = '';
+    lastJson = null;
+    lastMarkdown = '';
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    const text = rawMode && lastJson ? JSON.stringify(lastJson, null, 2) : (lastMarkdown || outEl.textContent || '');
+    await navigator.clipboard.writeText(text);
+    copyBtn.textContent = 'Copied ✓';
+    setTimeout(()=> copyBtn.textContent='Copy', 1000);
+  });
+
+  rawBtn.addEventListener('click', () => {
+    rawMode = !rawMode;
+    rawBtn.textContent = rawMode ? 'Rendered MD' : 'Raw JSON';
+    if (rawMode && lastJson) {
+      outEl.innerHTML = `<pre>${JSON.stringify(lastJson, null, 2)}</pre>`;
+    } else {
+      sanitizeAndRender(lastMarkdown || (lastJson?.llm_summary || ''));
+    }
+  });
+
+  abortBtn.addEventListener('click', () => controller?.abort());
+
+  callBtn.addEventListener('click', async () => {
+    let payload;
+    try { payload = JSON.parse(findingsEl.value || '{}'); }
+    catch(e){ alert('Invalid JSON: '+e.message); return; }
+
+    startTs = performance.now();
+    setStatus('calling');
+    requestAnimationFrame(tickElapsed);
+    callBtn.disabled = true; abortBtn.disabled = false; rawMode = false;
+    outEl.innerHTML = ''; parsedEl.innerHTML = '';
+    lastJson = null; lastMarkdown = '';
+
+    try {
+      if (streamToggle.checked) {
+        await callStream(payload);
+      } else {
+        await callOnce(payload);
+      }
+      setStatus('done');
+    } catch (e) {
+      setStatus('error');
+      outEl.innerHTML = `<pre>*** ${String(e)} ***</pre>`;
+    } finally {
+      callBtn.disabled = false; abortBtn.disabled = true; controller = null; startTs = 0;
+    }
+  });
+
+  async function callOnce(payload){
+    controller = new AbortController();
+    const resp = await fetch('/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    const ct = (resp.headers.get('content-type') || '').toLowerCase();
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}\n${text}`);
+    if (ct.includes('application/json')) {
+      const obj = JSON.parse(text);
+      lastJson = obj;
+      lastMarkdown = String(obj.llm_summary || '');
+      sanitizeAndRender(lastMarkdown || 'No llm_summary.');
+      renderParsed(obj);
+    } else {
+      lastMarkdown = text;
+      sanitizeAndRender(text);
+    }
+  }
+
+  async function callStream(payload){
+    controller = new AbortController();
+    const resp = await fetch('/analyze/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+
+    setStatus('streaming');
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // Parse SSE frames split by \n\n
+      let idx;
+      while ((idx = buffer.indexOf('\n\n')) >= 0) {
+        const frame = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 2);
+        if (!frame || frame.startsWith(':')) continue;
+
+        // Collect 'data:' lines (ignore 'event:' etc.)
+        const lines = frame.split('\n');
+        let ev = 'message', dataLines = [];
+        for (const l of lines) {
+          if (l.startsWith('event:')) ev = l.slice(6).trim();
+          else if (l.startsWith('data:')) dataLines.push(l.slice(5).trim());
+        }
+        const dataRaw = dataLines.join('\n');
+        try {
+          const obj = JSON.parse(dataRaw);
+          if (obj.delta) {
+            lastMarkdown += obj.delta;
+            sanitizeAndRender(lastMarkdown);
+          }
+          if (obj.final) {
+            lastMarkdown = obj.final;
+            sanitizeAndRender(lastMarkdown);
+          }
+          if (obj.error) {
+            outEl.innerHTML += `<pre>*** ${String(obj.error)} ***</pre>`;
+          }
+        } catch {
+          // not JSON — ignore
+        }
+      }
+    }
+  }
+
+  // convenience
+  findingsEl.value = '{"meta":{"scanner":"quick-scan","generated_at":"2025-08-21T03:12:00Z","environment":"staging"},"code_scan":{"issues":[{"file":"app/main.py","line":42,"type":"hardcoded_secret","severity":"high","evidence":"API_KEY=\\"AKIAFAKEEXAMPLE\\""}]},"containers":{"images":[{"image":"nginx:1.18.0","vulnerabilities":[{"cve":"CVE-2020-12345","severity":"medium"}]}]},"k8s":{"insecure_configs":[{"object":"deployment/web","issue":"runAsNonRoot=false","severity":"high"}]},"logs":{"events":[{"ts":"2025-08-20T22:55:12Z","type":"failed_login","details":"5 failed logins from 203.0.113.45"}]}}';
+})();
+</script>
+</body>
+</html>
