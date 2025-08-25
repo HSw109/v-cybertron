@@ -153,11 +153,65 @@ def generate_once(messages: Any, model: str, temperature: float) -> str:
 
 def build_prompt(payload: Dict[str, Any]) -> str:
     return (
-        "You are a concise cybersecurity expert. Given the following scan results from code, "
-        "containers, k8s and logs, summarize key risks, provide a 0-10 risk score, and list "
-        "prioritized remediation steps. Use markdown (headings, tables, checklists) and keep it compact.\n\n"
+        "You are a senior cybersecurity analyst conducting a comprehensive security assessment. "
+        "Analyze the security scan results below and provide a detailed, actionable report.\n\n"
         
-        f"JSON: {json.dumps(payload, ensure_ascii=False)[:60000]}\n"
+        "## Analysis Requirements:\n"
+        "1. **Risk Assessment**: Provide an overall risk score (0-10) with clear justification\n"
+        "2. **Critical Findings**: Identify the most severe vulnerabilities that need immediate attention\n"
+        "3. **Impact Analysis**: Explain potential business/security impact of key findings\n"
+        "4. **Remediation Roadmap**: Prioritized action items with timelines (immediate/short-term/long-term)\n"
+        "5. **Patching**: Provide a list of patches that need to be applied to the codebase\n"
+        "6. **Security Posture**: Overall assessment of the security maturity\n\n"
+        
+        "## Output Format (use Markdown):\n"
+        "### 🚨 Executive Summary\n"
+        "- **Overall Risk Score**: X/10 (with reasoning)\n"
+        "- **Critical Issues Found**: X\n"
+        "- **Immediate Action Required**: Yes/No\n\n"
+        
+        "### 🔍 Key Findings by Category\n"
+        "#### Code Security\n"
+        "- List gitleaks, semgrep, bandit findings\n"
+        "- Highlight secrets, vulnerabilities, security hotspots\n\n"
+        
+        "#### Container Security\n"
+        "- Trivy vulnerabilities (CVEs, misconfigurations)\n"
+        "- Base image issues, outdated packages\n\n"
+        
+        "#### Kubernetes Security\n"
+        "- Kube-linter policy violations\n"
+        "- OPA compliance issues\n"
+        "- Configuration security gaps\n\n"
+        
+        "#### Runtime/Logs Analysis\n"
+        "- Security events, anomalies\n"
+        "- Attack patterns, suspicious activities\n\n"
+        
+        "### ⚡ Priority Action Items\n"
+        "| Priority | Issue | Impact | Effort | Timeline |\n"
+        "|----------|-------|--------|--------|---------|\n"
+        "| 🔴 Critical | Description | High/Medium/Low | Easy/Medium/Hard | Immediate |\n\n"
+        
+        "### 🛡️ Security Recommendations\n"
+        "1. **Immediate Actions** (0-24 hours)\n"
+        "2. **Short-term Fixes** (1-4 weeks)\n"
+        "3. **Long-term Improvements** (1-3 months)\n"
+        "4. **Process & Policy Updates**\n\n"
+        
+        "### 📊 Risk Scoring Breakdown\n"
+        "- **Secrets/Credentials Exposure**: X/3\n"
+        "- **Critical Vulnerabilities**: X/3\n"
+        "- **Configuration Issues**: X/2\n"
+        "- **Compliance Gaps**: X/2\n\n"
+        
+        "Focus on actionable insights, specific CVEs, concrete remediation steps, and business impact. "
+        "Be thorough but concise. Highlight the most critical issues that could lead to data breaches, "
+        "system compromise, or compliance violations.\n\n"
+
+        "Lastly list all filenames that have been scanned and the results of the scan."
+        
+        f"## Security Scan Data:\n```json\n{json.dumps(payload, ensure_ascii=False)[:55000]}\n```\n"
     )
 
 
