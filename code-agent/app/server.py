@@ -51,19 +51,8 @@ def scan():
         "ref": ref,
         "tool_exit_codes": {"gitleaks": g_code, "semgrep": s_code, "bandit": b_code},
         "findings": {"gitleaks": g_out, "semgrep": s_out, "bandit": b_out},
+        "message": "ok"
     }
-
-    # Optional: send to LLM analyzer if configured
-    llm_url = os.getenv("LLM_URL")
-    if llm_url:
-        try:
-            resp = requests.post(f"{llm_url.rstrip('/')}/analyze", json=merged, timeout=30)
-            if resp.ok:
-                merged["llm_analysis"] = resp.json()
-            else:
-                merged["llm_analysis_error"] = f"HTTP {resp.status_code}"
-        except Exception as e:
-            merged["llm_analysis_error"] = str(e)
 
     return jsonify(merged)
 

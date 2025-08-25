@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Agent - V-Cybertron</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --fg: #e2e8f0;
+            --muted: #94a3b8;
+            --card: #111827;
+            --card-hover: #1f2937;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: #374151;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: var(--card-hover);
+            border: 1px solid var(--border);
+            color: var(--fg);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .agent-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .agent-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .scan-form {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--fg);
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--fg);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-input::placeholder {
+            color: var(--muted);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-primary:disabled {
+            background: var(--muted);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--card-hover);
+            border: 1px solid var(--border);
+            color: var(--fg);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--muted);
+        }
+
+        .status-dot.scanning {
+            background: var(--warning);
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.complete {
+            background: var(--success);
+        }
+
+        .status-dot.error {
+            background: var(--danger);
+        }
+
+        .results-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+        }
+
+        .results-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+        }
+
+        .results-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .results-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .llm-output {
+            min-height: 200px;
+            line-height: 1.6;
+        }
+
+        .llm-output pre {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .llm-output code {
+            background: var(--bg);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .llm-output h1, .llm-output h2, .llm-output h3 {
+            margin: 1.5rem 0 1rem;
+            color: var(--accent);
+        }
+
+        .llm-output table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .llm-output th,
+        .llm-output td {
+            border: 1px solid var(--border);
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .llm-output th {
+            background: var(--card-hover);
+            font-weight: 600;
+        }
+
+        .scan-details {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .scan-metadata {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .metadata-label {
+            color: var(--muted);
+        }
+
+        .metadata-value {
+            color: var(--fg);
+            word-break: break-all;
+        }
+
+        .tools-status {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .tool-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: var(--bg);
+            border-radius: 6px;
+        }
+
+        .tool-name {
+            font-weight: 500;
+        }
+
+        .exit-code {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .exit-code.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .exit-code.error {
+            background: var(--danger);
+            color: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @media (max-width: 768px) {
+            .results-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <a href="/" class="back-btn">← Dashboard</a>
+                <div class="agent-title">
+                    <div class="agent-icon">💻</div>
+                    <div>
+                        <h1>Code Agent</h1>
+                        <p style="color: var(--muted); font-size: 0.9rem; margin: 0;">Source Code Security Analysis</p>
+                    </div>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="scan-form">
+            <form id="scanForm">
+                <div class="form-group">
+                    <label class="form-label" for="repoUrl">Repository URL</label>
+                    <input type="url" id="repoUrl" class="form-input" 
+                           placeholder="https://github.com/owner/repository.git" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="gitRef">Git Reference (optional)</label>
+                    <input type="text" id="gitRef" class="form-input" 
+                           placeholder="main, develop, or commit hash">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="scanBtn">
+                        <span>🔍</span>
+                        Start Security Scan
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="abortBtn" style="display: none;">
+                        <span>⏹</span>
+                        Abort Scan
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="results-container" id="resultsContainer" style="display: none;">
+            <div class="results-card">
+                <div class="results-header">
+                    <h2 class="results-title">AI Analysis</h2>
+                    <div class="results-actions">
+                        <button class="btn btn-small btn-secondary" id="copyBtn">Copy</button>
+                        <button class="btn btn-small btn-secondary" id="rawBtn">Raw Data</button>
+                    </div>
+                </div>
+                <div class="llm-output" id="llmOutput"></div>
+            </div>
+
+            <div class="results-card">
+                <h2 class="results-title">Scan Details</h2>
+                <div class="scan-details">
+                    <div class="scan-metadata" id="scanMetadata"></div>
+                </div>
+                
+                <h3 style="margin: 1.5rem 0 1rem; color: var(--accent);">Tools Status</h3>
+                <div class="tools-status" id="toolsStatus"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scanForm = document.getElementById('scanForm');
+        const scanBtn = document.getElementById('scanBtn');
+        const abortBtn = document.getElementById('abortBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const llmOutput = document.getElementById('llmOutput');
+        const scanMetadata = document.getElementById('scanMetadata');
+        const toolsStatus = document.getElementById('toolsStatus');
+        const copyBtn = document.getElementById('copyBtn');
+        const rawBtn = document.getElementById('rawBtn');
+
+        let currentController = null;
+        let currentScanData = null;
+        let isRawMode = false;
+        let accumulatedContent = '';
+
+        marked.setOptions({ 
+            smartypants: false,
+            breaks: true
+        });
+
+        function updateStatus(status, text) {
+            statusDot.className = `status-dot ${status}`;
+            statusText.textContent = text;
+        }
+
+        function renderMarkdown(content) {
+            if (isRawMode) {
+                llmOutput.innerHTML = `<pre>${JSON.stringify(currentScanData, null, 2)}</pre>`;
+            } else {
+                const html = marked.parse(content || 'Waiting for analysis...');
+                llmOutput.innerHTML = html;
+            }
+        }
+
+        function updateScanMetadata(data) {
+            if (!data) return;
+            
+            scanMetadata.innerHTML = `
+                <span class="metadata-label">Repository:</span>
+                <span class="metadata-value">${data.repo || 'N/A'}</span>
+                <span class="metadata-label">Reference:</span>
+                <span class="metadata-value">${data.ref || 'HEAD'}</span>
+                <span class="metadata-label">Scan ID:</span>
+                <span class="metadata-value">${data.scan_id || 'N/A'}</span>
+            `;
+        }
+
+        function updateToolsStatus(exitCodes) {
+            if (!exitCodes) return;
+            
+            const tools = ['gitleaks', 'semgrep', 'bandit'];
+            toolsStatus.innerHTML = tools.map(tool => {
+                const code = exitCodes[tool];
+                const statusClass = code === 0 ? 'success' : 'error';
+                return `
+                    <div class="tool-status">
+                        <span class="tool-name">${tool}</span>
+                        <span class="exit-code ${statusClass}">Exit ${code}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        copyBtn.addEventListener('click', async () => {
+            const text = isRawMode 
+                ? JSON.stringify(currentScanData, null, 2)
+                : accumulatedContent || llmOutput.textContent;
+            
+            try {
+                await navigator.clipboard.writeText(text);
+                copyBtn.textContent = 'Copied ✓';
+                setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        });
+
+        rawBtn.addEventListener('click', () => {
+            isRawMode = !isRawMode;
+            rawBtn.textContent = isRawMode ? 'Show Analysis' : 'Raw Data';
+            renderMarkdown(accumulatedContent);
+        });
+
+        abortBtn.addEventListener('click', () => {
+            if (currentController) {
+                currentController.abort();
+                currentController = null;
+            }
+        });
+
+        scanForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const repoUrl = document.getElementById('repoUrl').value.trim();
+            const gitRef = document.getElementById('gitRef').value.trim();
+            
+            if (!repoUrl) return;
+
+            // Reset state
+            currentController = new AbortController();
+            currentScanData = null;
+            accumulatedContent = '';
+            isRawMode = false;
+            rawBtn.textContent = 'Raw Data';
+            
+            // Update UI
+            scanBtn.style.display = 'none';
+            abortBtn.style.display = 'inline-flex';
+            updateStatus('scanning', 'Starting security scan...');
+            resultsContainer.style.display = 'grid';
+            llmOutput.innerHTML = 'Initializing security scan...';
+            scanMetadata.innerHTML = `
+                <span class="metadata-label">Repository:</span>
+                <span class="metadata-value">${repoUrl}</span>
+                <span class="metadata-label">Reference:</span>
+                <span class="metadata-value">${gitRef || 'HEAD'}</span>
+            `;
+            toolsStatus.innerHTML = '';
+
+            try {
+                const payload = { repo: repoUrl };
+                if (gitRef) payload.ref = gitRef;
+
+                const response = await fetch('/scan/code/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: currentController.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                updateStatus('scanning', 'Processing AI analysis...');
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+
+                    let eventEnd;
+                    while ((eventEnd = buffer.indexOf('\n\n')) >= 0) {
+                        const event = buffer.slice(0, eventEnd).trim();
+                        buffer = buffer.slice(eventEnd + 2);
+
+                        if (!event || event.startsWith(':')) continue;
+
+                        const lines = event.split('\n');
+                        let eventType = 'message';
+                        let eventData = '';
+
+                        for (const line of lines) {
+                            if (line.startsWith('event:')) {
+                                eventType = line.slice(6).trim();
+                            } else if (line.startsWith('data:')) {
+                                eventData += line.slice(5).trim();
+                            }
+                        }
+
+                        try {
+                            const data = JSON.parse(eventData);
+                            
+                            if (data.status) {
+                                llmOutput.innerHTML = `<div style="color: var(--muted); font-style: italic;">${data.status}</div>`;
+                                updateStatus('scanning', data.status);
+                            }
+
+                            if (data.delta) {
+                                accumulatedContent += data.delta;
+                                renderMarkdown(accumulatedContent);
+                                updateStatus('scanning', 'Generating AI analysis...');
+                            }
+
+                            if (data.final) {
+                                accumulatedContent = data.final;
+                                renderMarkdown(accumulatedContent);
+                                updateStatus('complete', 'Analysis complete');
+                            }
+
+                            if (data.error) {
+                                llmOutput.innerHTML = `<div style="color: var(--danger); padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                                    <strong>Error:</strong> ${data.error}
+                                </div>`;
+                                updateStatus('error', 'Analysis failed');
+                            }
+                        } catch (parseErr) {
+                            console.warn('Failed to parse event data:', parseErr);
+                        }
+                    }
+                }
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    updateStatus('', 'Scan aborted');
+                    llmOutput.innerHTML = '<div style="color: var(--muted); font-style: italic;">Scan was aborted by user.</div>';
+                } else {
+                    updateStatus('error', 'Scan failed');
+                    llmOutput.innerHTML = `<div style="color: var(--danger); padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                        <strong>Error:</strong> ${error.message}
+                    </div>`;
+                }
+            } finally {
+                scanBtn.style.display = 'inline-flex';
+                abortBtn.style.display = 'none';
+                currentController = null;
+            }
+        });
+    </script>
+</body>
+</html>

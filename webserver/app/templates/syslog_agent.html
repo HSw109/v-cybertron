@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syslog Agent - V-Cybertron</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --fg: #e2e8f0;
+            --muted: #94a3b8;
+            --card: #111827;
+            --card-hover: #1f2937;
+            --accent: #f59e0b;
+            --accent-hover: #d97706;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: #374151;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: var(--card-hover);
+            border: 1px solid var(--border);
+            color: var(--fg);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .agent-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .agent-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab:hover {
+            color: var(--fg);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--fg);
+            font-weight: 500;
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--fg);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-input::placeholder,
+        .form-textarea::placeholder {
+            color: var(--muted);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--card-hover);
+            border: 1px solid var(--border);
+            color: var(--fg);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-small {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .results-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .results-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-badge.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .status-badge.warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .status-badge.danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .log-entries {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            font-size: 0.9rem;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-timestamp {
+            color: var(--muted);
+            margin-right: 0.5rem;
+        }
+
+        .log-level {
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .log-level.high {
+            background: var(--danger);
+            color: white;
+        }
+
+        .log-level.medium {
+            background: var(--warning);
+            color: white;
+        }
+
+        .log-level.low {
+            background: var(--muted);
+            color: white;
+        }
+
+        .match-item {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .match-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .match-rule {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .info-card {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-title {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .info-text {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: var(--muted);
+        }
+
+        .sample-logs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .sample-log {
+            background: var(--card-hover);
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sample-log:hover {
+            background: var(--border);
+        }
+
+        .sample-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--accent);
+        }
+
+        .sample-content {
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: var(--muted);
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="header-left">
+                <a href="/" class="back-btn">← Dashboard</a>
+                <div class="agent-title">
+                    <div class="agent-icon">📊</div>
+                    <div>
+                        <h1>Syslog Agent</h1>
+                        <p style="color: var(--muted); font-size: 0.9rem; margin: 0;">Real-time Log Analysis & Monitoring</p>
+                    </div>
+                </div>
+            </div>
+            <div class="status-badge success">Active</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="info-card">
+            <div class="info-title">📊 Log Analysis & Security Monitoring</div>
+            <div class="info-text">
+                This agent ingests log data in real-time, applies security pattern matching, and performs anomaly detection to identify potential security threats and suspicious activities.
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="ingest">Log Ingestion</button>
+            <button class="tab" data-tab="findings">Security Findings</button>
+            <button class="tab" data-tab="rules">Detection Rules</button>
+        </div>
+
+        <div id="ingest" class="tab-content active">
+            <div class="form-card">
+                <h2 style="margin-bottom: 1rem; color: var(--accent);">Ingest Logs</h2>
+                <form id="ingestForm">
+                    <div class="form-group">
+                        <label class="form-label" for="logData">Log Data (JSON)</label>
+                        <textarea id="logData" class="form-textarea" 
+                                  placeholder='{"message": "Failed password for user admin from 192.168.1.100", "source": "ssh", "timestamp": "2024-01-01T10:00:00Z"}'></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <span>📥</span>
+                            Ingest Logs
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="clearLogsBtn">
+                            <span>🗑️</span>
+                            Clear
+                        </button>
+                    </div>
+                </form>
+
+                <div class="sample-logs">
+                    <div class="sample-log" onclick="loadSampleLog('failed_auth')">
+                        <div class="sample-title">Failed Authentication</div>
+                        <div class="sample-content">SSH login failure event</div>
+                    </div>
+                    <div class="sample-log" onclick="loadSampleLog('sudo_usage')">
+                        <div class="sample-title">Sudo Usage</div>
+                        <div class="sample-content">Privileged command execution</div>
+                    </div>
+                    <div class="sample-log" onclick="loadSampleLog('root_access')">
+                        <div class="sample-title">Root Access</div>
+                        <div class="sample-content">Root user activity</div>
+                    </div>
+                    <div class="sample-log" onclick="loadSampleLog('batch_logs')">
+                        <div class="sample-title">Batch Events</div>
+                        <div class="sample-content">Multiple log entries</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ingestResults" class="results-card" style="display: none;">
+                <div class="results-header">
+                    <h3 class="results-title">Ingestion Result</h3>
+                    <div id="ingestStatus"></div>
+                </div>
+                <div id="ingestOutput"></div>
+            </div>
+        </div>
+
+        <div id="findings" class="tab-content">
+            <div class="form-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2 style="margin: 0; color: var(--accent);">Security Findings</h2>
+                    <button class="btn btn-primary" id="refreshFindingsBtn">
+                        <span>🔄</span>
+                        Refresh
+                    </button>
+                </div>
+                <div id="findingsContent">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>No findings loaded. Click refresh to fetch current security findings.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="rules" class="tab-content">
+            <div class="form-card">
+                <h2 style="margin-bottom: 1rem; color: var(--accent);">Add Detection Rule</h2>
+                <form id="ruleForm">
+                    <div class="form-group">
+                        <label class="form-label" for="ruleName">Rule Name</label>
+                        <input type="text" id="ruleName" class="form-input" 
+                               placeholder="Brute force detection" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="rulePattern">Pattern (Regex)</label>
+                        <input type="text" id="rulePattern" class="form-input" 
+                               placeholder="failed.*password.*attempt" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="ruleSeverity">Severity</label>
+                        <select id="ruleSeverity" class="form-input">
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <span>➕</span>
+                            Add Rule
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="results-card">
+                <h3 class="results-title">Current Detection Rules</h3>
+                <div id="currentRules">
+                    <div class="match-item">
+                        <div class="match-header">
+                            <span class="match-rule">sudo usage</span>
+                            <span class="status-badge warning">MEDIUM</span>
+                        </div>
+                        <code style="color: var(--muted); font-size: 0.9rem;">sudo[ :](?:\w+)</code>
+                    </div>
+                    <div class="match-item">
+                        <div class="match-header">
+                            <span class="match-rule">failed auth</span>
+                            <span class="status-badge danger">HIGH</span>
+                        </div>
+                        <code style="color: var(--muted); font-size: 0.9rem;">failed password|authentication failure</code>
+                    </div>
+                    <div class="match-item">
+                        <div class="match-header">
+                            <span class="match-rule">unexpected root</span>
+                            <span class="status-badge danger">HIGH</span>
+                        </div>
+                        <code style="color: var(--muted); font-size: 0.9rem;">user=root|uid=0</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                
+                // Update tab states
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Sample log data
+        const sampleLogs = {
+            failed_auth: '{"message": "Failed password for user admin from 192.168.1.100 port 22 ssh2", "source": "sshd", "timestamp": "2024-01-01T10:00:00Z", "severity": "warning"}',
+            sudo_usage: '{"message": "admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/cat /etc/shadow", "source": "sudo", "timestamp": "2024-01-01T10:05:00Z"}',
+            root_access: '{"message": "USER=root CMD=/usr/bin/systemctl restart nginx", "source": "audit", "timestamp": "2024-01-01T10:10:00Z", "uid": "0"}',
+            batch_logs: `[
+    {"message": "Failed password for user root from 203.0.113.45", "source": "sshd", "timestamp": "2024-01-01T10:00:00Z"},
+    {"message": "Failed password for user admin from 203.0.113.45", "source": "sshd", "timestamp": "2024-01-01T10:00:05Z"},
+    {"message": "Failed password for user test from 203.0.113.45", "source": "sshd", "timestamp": "2024-01-01T10:00:10Z"},
+    {"message": "Connection closed by 203.0.113.45", "source": "sshd", "timestamp": "2024-01-01T10:00:15Z"}
+]`
+        };
+
+        function loadSampleLog(type) {
+            document.getElementById('logData').value = sampleLogs[type];
+        }
+
+        // Ingest form
+        document.getElementById('ingestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const logData = document.getElementById('logData').value.trim();
+            if (!logData) return;
+
+            try {
+                let payload;
+                try {
+                    payload = JSON.parse(logData);
+                } catch (parseErr) {
+                    throw new Error('Invalid JSON format');
+                }
+
+                const response = await fetch('/logs/ingest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.text();
+                const resultsDiv = document.getElementById('ingestResults');
+                const statusDiv = document.getElementById('ingestStatus');
+                const outputDiv = document.getElementById('ingestOutput');
+
+                resultsDiv.style.display = 'block';
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<span class="status-badge success">Success</span>';
+                    outputDiv.innerHTML = `<pre style="background: var(--bg); padding: 1rem; border-radius: 8px; overflow-x: auto;">${result}</pre>`;
+                } else {
+                    statusDiv.innerHTML = '<span class="status-badge danger">Error</span>';
+                    outputDiv.innerHTML = `<div style="color: var(--danger);">HTTP ${response.status}: ${result}</div>`;
+                }
+            } catch (error) {
+                const resultsDiv = document.getElementById('ingestResults');
+                const statusDiv = document.getElementById('ingestStatus');
+                const outputDiv = document.getElementById('ingestOutput');
+
+                resultsDiv.style.display = 'block';
+                statusDiv.innerHTML = '<span class="status-badge danger">Error</span>';
+                outputDiv.innerHTML = `<div style="color: var(--danger);">${error.message}</div>`;
+            }
+        });
+
+        // Clear logs
+        document.getElementById('clearLogsBtn').addEventListener('click', () => {
+            document.getElementById('logData').value = '';
+            document.getElementById('ingestResults').style.display = 'none';
+        });
+
+        // Refresh findings
+        document.getElementById('refreshFindingsBtn').addEventListener('click', async () => {
+            const content = document.getElementById('findingsContent');
+            content.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--muted);">Loading findings...</div>';
+
+            try {
+                const response = await fetch('/logs/findings');
+                const result = await response.text();
+
+                if (response.ok) {
+                    const findings = JSON.parse(result);
+                    renderFindings(findings);
+                } else {
+                    content.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2rem;">
+                        Failed to load findings: HTTP ${response.status}
+                    </div>`;
+                }
+            } catch (error) {
+                content.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2rem;">
+                    Error: ${error.message}
+                </div>`;
+            }
+        });
+
+        function renderFindings(findings) {
+            const content = document.getElementById('findingsContent');
+            
+            if (!findings.matches || findings.matches.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✅</div>
+                        <p>No security findings detected.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const matchesHtml = findings.matches.map(match => {
+                const severityClass = match.severity.toLowerCase() === 'high' ? 'danger' : 
+                                   match.severity.toLowerCase() === 'medium' ? 'warning' : 'muted';
+                
+                return `
+                    <div class="match-item">
+                        <div class="match-header">
+                            <span class="match-rule">${match.rule}</span>
+                            <span class="status-badge ${severityClass}">${match.severity}</span>
+                        </div>
+                        <div style="margin-top: 0.5rem; color: var(--muted); font-size: 0.9rem;">
+                            <strong>Message:</strong> ${match.event.message || 'N/A'}<br>
+                            <strong>Source:</strong> ${match.event.source || 'N/A'}<br>
+                            <strong>Timestamp:</strong> ${new Date(match.event.ts * 1000).toLocaleString()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const topSourcesHtml = findings.top_sources ? findings.top_sources.map(([source, count]) => `
+                <div class="stat-item">
+                    <span class="stat-label">${source}</span>
+                    <span class="stat-value">${count} events</span>
+                </div>
+            `).join('') : '';
+
+            content.innerHTML = `
+                <div class="results-grid">
+                    <div>
+                        <h3 style="margin-bottom: 1rem; color: var(--accent);">Security Matches</h3>
+                        ${matchesHtml}
+                    </div>
+                    <div>
+                        <h3 style="margin-bottom: 1rem; color: var(--accent);">Top Sources</h3>
+                        <div class="results-card" style="margin: 0;">
+                            ${topSourcesHtml || '<div class="empty-state"><p>No source data available</p></div>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Rule form
+        document.getElementById('ruleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('ruleName').value.trim();
+            const pattern = document.getElementById('rulePattern').value.trim();
+            const severity = document.getElementById('ruleSeverity').value;
+
+            if (!name || !pattern) return;
+
+            try {
+                const response = await fetch('/rules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, pattern, severity })
+                });
+
+                if (response.ok) {
+                    // Clear form
+                    document.getElementById('ruleForm').reset();
+                    
+                    // Add to current rules display
+                    const rulesContainer = document.getElementById('currentRules');
+                    const severityClass = severity.toLowerCase() === 'high' ? 'danger' : 
+                                        severity.toLowerCase() === 'medium' ? 'warning' : 'muted';
+                    
+                    const newRule = document.createElement('div');
+                    newRule.className = 'match-item';
+                    newRule.innerHTML = `
+                        <div class="match-header">
+                            <span class="match-rule">${name}</span>
+                            <span class="status-badge ${severityClass}">${severity}</span>
+                        </div>
+                        <code style="color: var(--muted); font-size: 0.9rem;">${pattern}</code>
+                    `;
+                    rulesContainer.appendChild(newRule);
+
+                    // Show success message (optional)
+                    alert('Rule added successfully!');
+                } else {
+                    alert('Failed to add rule');
+                }
+            } catch (error) {
+                alert('Error adding rule: ' + error.message);
+            }
+        });
+
+        // Load initial sample
+        loadSampleLog('failed_auth');
+    </script>
+</body>
+</html>

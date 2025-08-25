@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V-Cybertron Security Dashboard</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --fg: #e2e8f0;
+            --muted: #94a3b8;
+            --card: #111827;
+            --card-hover: #1f2937;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: #374151;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            color: var(--muted);
+            margin-top: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .agent-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .agent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--success));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .agent-card:hover {
+            background: var(--card-hover);
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.1);
+        }
+
+        .agent-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .agent-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .code-icon { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .container-icon { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .k8s-icon { background: linear-gradient(135deg, #10b981, #059669); }
+        .syslog-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+        .agent-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .agent-description {
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .agent-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .feature-badge {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--accent);
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .footer {
+            text-align: center;
+            color: var(--muted);
+            padding: 2rem 0;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .header-content,
+            .container {
+                padding: 0 1rem;
+            }
+            
+            .agents-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .agent-card {
+                padding: 1.5rem;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>V-Cybertron Security Dashboard</h1>
+            <p class="subtitle">Centralized cybersecurity analysis with AI-powered insights</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">4</div>
+                <div class="stat-label">Security Agents</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value pulse">●</div>
+                <div class="stat-label">System Status</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">AI</div>
+                <div class="stat-label">LLM Analysis</div>
+            </div>
+        </div>
+
+        <div class="agents-grid">
+            <a href="/agent/code" class="agent-card">
+                <div class="agent-icon code-icon">
+                    💻
+                </div>
+                <h3 class="agent-title">Code Agent</h3>
+                <p class="agent-description">
+                    Comprehensive source code security analysis using industry-standard tools
+                </p>
+                <div class="agent-features">
+                    <span class="feature-badge">Gitleaks</span>
+                    <span class="feature-badge">Semgrep</span>
+                    <span class="feature-badge">Bandit</span>
+                </div>
+            </a>
+
+            <a href="/agent/container" class="agent-card">
+                <div class="agent-icon container-icon">
+                    🐳
+                </div>
+                <h3 class="agent-title">Container Agent</h3>
+                <p class="agent-description">
+                    Container and image vulnerability scanning for secure deployments
+                </p>
+                <div class="agent-features">
+                    <span class="feature-badge">Trivy</span>
+                    <span class="feature-badge">Grype</span>
+                    <span class="feature-badge">Dockle</span>
+                </div>
+            </a>
+
+            <a href="/agent/k8s" class="agent-card">
+                <div class="agent-icon k8s-icon">
+                    ☸️
+                </div>
+                <h3 class="agent-title">Kubernetes Agent</h3>
+                <p class="agent-description">
+                    Kubernetes security configuration and compliance validation
+                </p>
+                <div class="agent-features">
+                    <span class="feature-badge">Kube-linter</span>
+                    <span class="feature-badge">OPA</span>
+                    <span class="feature-badge">YAML</span>
+                </div>
+            </a>
+
+            <a href="/agent/syslog" class="agent-card">
+                <div class="agent-icon syslog-icon">
+                    📊
+                </div>
+                <h3 class="agent-title">Syslog Agent</h3>
+                <p class="agent-description">
+                    Real-time log analysis and security event monitoring
+                </p>
+                <div class="agent-features">
+                    <span class="feature-badge">Pattern Detection</span>
+                    <span class="feature-badge">Anomaly Detection</span>
+                    <span class="feature-badge">Real-time</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>V-Cybertron Security Platform - AI-Powered Threat Analysis</p>
+    </div>
+</body>
+</html>

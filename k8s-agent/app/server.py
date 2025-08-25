@@ -104,19 +104,8 @@ def scan():
         "ref": ref,
         "tool_exit_codes": {"kube-linter": kl_code, "opa": opa_code},
         "findings": {"kube-linter": kl_out, "opa": opa_out},
+        "message": "ok"
     }
-
-    llm_url = os.getenv("LLM_URL")
-    if llm_url:
-        try:
-            import requests
-            resp = requests.post(f"{llm_url.rstrip('/')}/analyze", json=merged, timeout=30)
-            if resp.ok:
-                merged["llm_analysis"] = resp.json()
-            else:
-                merged["llm_analysis_error"] = f"HTTP {resp.status_code}"
-        except Exception as e:
-            merged["llm_analysis_error"] = str(e)
 
     return jsonify(merged)
 
