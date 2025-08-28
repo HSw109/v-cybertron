@@ -75,7 +75,7 @@ def scan_code_stream():
             # Step 1: Call code agent to perform actual security scan
             yield f"data: {json.dumps({'status': 'Cloning repository and running security scans...'})}\n\n"
             
-            scan_response = requests.post(f"{CODE_URL}/scan", json=payload, timeout=300)
+            scan_response = requests.post(f"{CODE_URL}/scan", json=payload)
             if not scan_response.ok:
                 yield f"event: error\ndata: {json.dumps({'error': f'Code agent scan failed: HTTP {scan_response.status_code}'})}\n\n"
                 return
@@ -93,8 +93,7 @@ def scan_code_stream():
             llm_response = requests.post(
                 f"{LLM_URL.rstrip('/')}/analyze/stream", 
                 json=scan_results, 
-                stream=True, 
-                timeout=120
+                stream=True
             )
             
             if not llm_response.ok:
@@ -153,7 +152,7 @@ def scan_container_stream():
             # Step 1: Call container agent to perform actual security scan
             yield f"data: {json.dumps({'status': 'Cloning repository and running container security scans...'})}\n\n"
             
-            scan_response = requests.post(f"{CONT_URL}/scan", json=payload, timeout=600)
+            scan_response = requests.post(f"{CONT_URL}/scan", json=payload)
             if not scan_response.ok:
                 yield f"event: error\ndata: {json.dumps({'error': f'Container agent scan failed: HTTP {scan_response.status_code}'})}\n\n"
                 return
@@ -171,8 +170,7 @@ def scan_container_stream():
             llm_response = requests.post(
                 f"{LLM_URL.rstrip('/')}/analyze/stream", 
                 json=scan_results, 
-                stream=True, 
-                timeout=120
+                stream=True
             )
             
             if not llm_response.ok:
@@ -231,7 +229,7 @@ def scan_k8s_stream():
             # Step 1: Call k8s agent to perform actual security scan
             yield f"data: {json.dumps({'status': 'Cloning repository and running K8s security analysis...'})}\n\n"
             
-            scan_response = requests.post(f"{K8S_URL}/scan", json=payload, timeout=300)
+            scan_response = requests.post(f"{K8S_URL}/scan", json=payload)
             if not scan_response.ok:
                 yield f"event: error\ndata: {json.dumps({'error': f'K8s agent scan failed: HTTP {scan_response.status_code}'})}\n\n"
                 return
@@ -249,8 +247,7 @@ def scan_k8s_stream():
             llm_response = requests.post(
                 f"{LLM_URL.rstrip('/')}/analyze/stream", 
                 json=scan_results, 
-                stream=True, 
-                timeout=120
+                stream=True
             )
             
             if not llm_response.ok:

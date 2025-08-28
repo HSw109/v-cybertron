@@ -53,7 +53,7 @@ def run_trivy(repo_path: str) -> Tuple[int, Any]:
     # If we found an image name, scan it with trivy
     img_results = {}
     for img_name in img_names:
-        cmd_img = ["trivy", "image", "--format", "json", "--output", "trivy-report-img.json", img_name]
+        cmd_img = ["trivy", "image", "--format", "json", img_name]
         code_img, out_img_raw, err_img = run_cmd(cmd_img, timeout=120)
         if code_img < 0:
             img_results[img_name] = {"error": err_img or "trivy timeout"}

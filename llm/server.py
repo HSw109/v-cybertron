@@ -209,7 +209,7 @@ def build_prompt(payload: Dict[str, Any]) -> str:
         "Be thorough but concise. Highlight the most critical issues that could lead to data breaches, "
         "system compromise, or compliance violations.\n\n"
 
-        "Lastly list all filenames that have been scanned and the results of the scan."
+        "Lastly list all filenames that have been scanned and the results of the scan in a table format (keep it short and concise)."
         
         f"## Security Scan Data:\n```json\n{json.dumps(payload, ensure_ascii=False)[:55000]}\n```\n"
     )
